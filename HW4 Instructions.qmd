@@ -1,0 +1,132 @@
+---
+title: "Text: Words 2"
+author: "Donovan Dean"
+date: "`r Sys.Date()`"
+editor: visual
+format:
+  html:
+    embed-resources: true
+    code-fold: true  # new
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r setup}
+library(tidyverse)
+library(rvest)
+library(wordcloud)
+library(tm)
+library(tidytext)
+library(SnowballC)
+library(ggplot2)
+```
+
+# Romeo and Juliet
+
+"Oh Romeo, Romeo, wherefore art thou Romeo?"
+
+Full script - <http://shakespeare.mit.edu/romeo_juliet/full.html>
+
+Let's explore...
+
+1.  Whose name appears more often, Romeo or Juliet?
+2.  Perform "pre-cleaning" on the file to remove extraneous characters.
+3.  Identify which word appears most often in the text
+
+# Read in Romeo and Juliet
+
+```{r}
+RandJ0 <- read_file("/Users/donovandean/Documents/Academics/Villanova University/Spring 2026/Data Science Tools (STAT8796)/Assignments/Homework/HW4/HW4 Instructions_files/RandJ.txt")
+```
+
+# Term Frequency
+
+Whose name appears more often, Romeo or Juliet?{r}
+
+```{r}
+RandJ_format <- str_to_lower(RandJ0)
+RandJ_remove_speaking <- RandJ_format |> 
+  str_remove_all("\\*romeo\\*|\\*juliet\\*")
+
+romeo_count <- str_count(RandJ_remove_speaking, "\\bromeo\\b") |> 
+  sum()
+juliet_count <- str_count(RandJ_remove_speaking, "\\bjuliet\\b") |> 
+  sum()
+
+tibble(name = c("Romeo", "Juliet"),
+       frequency = c(romeo_count, juliet_count))
+```
+
+After removing the speaker labels so that only textual mentions were counted, Romeo (146) appears more frequently than Juliet (63) in the play.
+
+# Pre-cleaning / Tokenize
+
+Perform "pre-cleaning" on the file to remove extraneous characters.
+
+```{r}
+RandJ_tbl <- tibble(text = RandJ_remove_speaking)
+RandJ_words <- RandJ_tbl |> 
+  unnest_tokens(word, text)
+
+RandJ_words_clean <- RandJ_words |> 
+  filter(str_detect(word, "^[a-z]+$"))
+head(RandJ_words_clean, 20)
+
+data(stop_words)
+RandJ_words_nostop <- RandJ_words_clean |> 
+  anti_join(stop_words, by = "word")
+head(RandJ_words_nostop, 20)
+
+word_count <- RandJ_words_nostop |> 
+  count(word, sort = TRUE)
+head(word_count, 10)
+```
+
+# Wordcloud
+
+In case we get here during in-class coding and you want to access what I have, here are two rds files...that I'll talk about when we get here.
+
+```{r}
+set.seed(123)
+
+wordcloud(words = word_count$word,
+          freq = word_count$n,
+          max.words = 100)
+```
+
+# n-grams
+
+```{r}
+RandJ_bigrams <- RandJ_tbl |> 
+  unnest_tokens(bigrams, text, token = "ngrams", n = 2)
+
+RandJ_bigrams_sep <- RandJ_bigrams |> 
+  separate(bigrams, into = c("word1", "word2", sep = " "))
+
+RandJ_bigrams_clean <- RandJ_bigrams_sep |> 
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word)
+
+RandJ_bigrams_final <- RandJ_bigrams_clean |> 
+  unite(bigrams, word1, word2, sep = " ")
+bigram_count <- RandJ_bigrams_final |> 
+  count(bigrams, sort = TRUE)
+head(bigram_count, 10)
+```
+
+# Visualization of n-grams
+
+```{r}
+bigram_count |> 
+  slice_max(n, n = 10) |> 
+  ggplot(aes(x = reorder(bigrams, n), y = n)) + 
+  geom_col() + 
+  coord_flip() + 
+  labs(title = "Top 10 Bigrams in Romeo and Juliet",
+       x = NULL,
+       y = "Count")
+```
+
+The most frequent bigram is "friar laurence", reflecting the central role of Friar Laurence in the plot.
