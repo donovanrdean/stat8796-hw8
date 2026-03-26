@@ -38,8 +38,14 @@ Let's explore...
 # Read in Romeo and Juliet
 
 ```{r}
-RandJ0 <- read_file("/Users/donovandean/Documents/Academics/Villanova University/Spring 2026/Data Science Tools (STAT8796)/Assignments/Homework/HW4/HW4 Instructions_files/RandJ.txt")
+#RandJ0 <- read_file("/Users/donovandean/Documents/Academics/Villanova University/Spring 2026/Data Science Tools (STAT8796)/Assignments/Homework/HW4/HW4 Instructions_files/RandJ.txt")
 ```
+
+```{r}
+#Referencing my own local path to see your results
+RandJ0 <- read_file("Romeo and Juliet Entire Play.txt")
+```
+
 
 # Term Frequency
 
@@ -64,6 +70,10 @@ After removing the speaker labels so that only textual mentions were counted, Ro
 # Pre-cleaning / Tokenize
 
 Perform "pre-cleaning" on the file to remove extraneous characters.
+
+**[Code Comment]** In this section you could reduce the length of code by combining your different steps into a single pipe. You can unnest, filter, join, and count in a single step. However, I imagine this made it easier to double check each step was working as intended.
+
+**[Comment 1]** Top 10 responses here will still help you validate but not take up too much space on your final PDF. This won't matter as much if you combine all steps into one pipe, as mentioned above. 
 
 ```{r}
 RandJ_tbl <- tibble(text = RandJ_remove_speaking)
@@ -118,6 +128,8 @@ head(bigram_count, 10)
 
 # Visualization of n-grams
 
+**[Comment 2]** You could potentially limit the results given so many words in the worldcloud, and try to introduce color. I see you're using slice_max, but it is not limiting to top 10 results. I also had my own challenges trying to group by different colors for different themes, like we did in class.
+
 ```{r}
 bigram_count |> 
   slice_max(n, n = 10) |> 
@@ -130,3 +142,5 @@ bigram_count |>
 ```
 
 The most frequent bigram is "friar laurence", reflecting the central role of Friar Laurence in the plot.
+
+**[Comment 3]** Any other interesting bigrams? I also saw primarily proper nouns, but any non-stopwards that illustrate central themes of the text?
