@@ -26,7 +26,7 @@ library(readxl)
 
 ```{r setup}
 #Read in created spreadsheet of both ESPN and Bleacher Report top 30 player rankings
-raw <- read_excel("nba_consensus_rankings.xlsx")
+raw <- read_excel("shiny app/nba_consensus_rankings.xlsx")
 
 #Create ESPN dataset by selecting player names and ranks from the raw data
 espn <- raw |> 
@@ -69,7 +69,7 @@ print(top30)
 
 ```{r setup}
 #Read in data manually collecting from basketball data sources
-df <- read_excel("data.xlsx")
+df <- read_excel("shiny app/data.xlsx")
 
 #Create era groups from the decade column
 df$era <- case_when(
@@ -212,4 +212,6 @@ df[, c("player", "goat_score")]
 
 #Sort from highest to lowest
 df[order(-df$goat_score), c("player", "goat_score")]
+
+saveRDS(df, "final_goat_data.rds")
 ```

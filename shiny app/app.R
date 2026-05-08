@@ -5,6 +5,8 @@ library(DT)
 library(shinyBS)
 library(plotly)
 
+df <- readRDS("shiny app/final_goat_data.rds")
+
 addResourcePath("player_images", "www/player_images")
 
 help_text <- function(text) {
