@@ -1,0 +1,215 @@
+---
+title: "code_1"
+author: "Donovan Dean"
+date: "`r Sys.Date()`"
+editor: visual
+format:
+  html:
+    embed-resources: true
+execute:
+  echo: true
+  output: true
+  message: false
+  warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyr)
+library(readxl)
+library(dplyr)
+library(readxl)
+```
+
+# Ranking
+
+```{r setup}
+#Read in created spreadsheet of both ESPN and Bleacher Report top 30 player rankings
+raw <- read_excel("nba_consensus_rankings.xlsx")
+
+#Create ESPN dataset by selecting player names and ranks from the raw data
+espn <- raw |> 
+  select(rank = Rank, player = 'ESPN Player') |> 
+  mutate(source = "ESPN")
+head(espn)
+
+#Create Bleacher Report dataset by selecting player names and ranks from the raw data
+br <- raw |> 
+  select(rank = Rank, player = 'B/R Player') |> 
+  mutate(source = "B/R")
+head(br)
+
+#Combine ESPN and B/R datasets into a single consensus table by matching player names, and compute consensus ranking metrics
+consensus <- full_join(espn |> 
+                         rename(espn_rank = rank),
+                       br |> 
+                         rename(br_rank = rank),
+                       by = "player") |> 
+  mutate(avg_rank = ifelse(is.na(espn_rank) & is.na(br_rank), NA,
+                           rowMeans(cbind(espn_rank, br_rank), na.rm = TRUE)),
+         in_both_lists = !is.na(espn_rank) & !is.na(br_rank),
+         rank_difference = espn_rank - br_rank) |> 
+  arrange(avg_rank, player)
+
+#Diagnostic check
+nrow(consensus)
+sum(consensus$in_both_lists)
+consensus |> filter(!in_both_lists)
+consensus |> arrange(desc(abs(rank_difference)))
+
+#Select the final top 30 players and keep only the main ranking variables
+top30 <- consensus |> 
+  slice_head(n = 30) |> 
+  select(player, avg_rank, espn_rank, br_rank, in_both_lists, rank_difference)
+print(top30)
+```
+
+# Stats
+
+```{r setup}
+#Read in data manually collecting from basketball data sources
+df <- read_excel("data.xlsx")
+
+#Create era groups from the decade column
+df$era <- case_when(
+  df$player == "LeBron James" ~ "Post-Jordan Era (2000-2009), Modern Era (2010-Present)",
+  df$decade %in% c("1950s", "1960s", "1970s") ~ "Classic Era (1950-1979)",
+  df$decade %in% c("1980s", "1990s") ~ "Golden Age Era (1980-1999)",
+  df$decade %in% c("2000s") ~ "Post-Jordan Era (2000-2009)",
+  df$decade %in% c("2010s", "2020s") ~ "Modern Era (2010-Present)")
+
+#Create weighted total championships (NBA + adjusted ABA)
+df$total_championships <- df$championships + 0.6 * df$`aba champ`
+df[, c("player", "championships", "aba champ", "total_championships")]
+
+#Create weighted total conference championships (NBA + adjusted ABA)
+df$total_conf_champ <- df$conf_champ + 0.6 * df$`aba c_champ`
+df[, c("player", "conf_champ", "aba c_champ", "total_conf_champ")]
+
+#Create weighted total Finals MVPs (NBA + adjusted ABA)
+df$total_finals_mvps <- df$finals_mvps + 0.6 * df$`aba play_mvp`
+df[, c("player", "finals_mvps", "aba play_mvp", "total_finals_mvps")]
+
+#Create weighted total MVPs (NBA + adjusted ABA)
+df$total_mvps <- df$mvps + 0.6 * df$`aba mvps`
+df[, c("player", "mvps", "aba mvps", "total_mvps")]
+
+#Create weighted total All-NBA selections (NBA + adjusted ABA)
+df$total_all_nba <- df$all_nba + 0.6 * df$all_aba
+df[, c("player", "all_nba", "all_aba", "total_all_nba")]
+
+#Create weighted total All-Defense selections (NBA + adjusted ABA)
+df$total_all_def <- df$all_def + 0.6 * df$`aba all_def`
+df[, c("player", "all_def", "aba all_def", "total_all_def")]
+
+#Create weighted total All-Star selections (NBA + adjusted ABA)
+df$total_all_star <- df$all_star + 0.6 * df$`aba allstar`
+df[, c("player", "all_star", "aba allstar", "total_all_star")]
+```
+
+```{r standardizing-accolades}
+#Standardize team accolade variables
+df$z_championships <- scale(df$total_championships)
+df$z_conf_champ <- scale(df$total_conf_champ)
+df[, c("player", "z_championships", "z_conf_champ")]
+
+#Create Team Accolades Score (weighted)
+df$team_score <- 0.90 * df$z_championships + 
+                 0.10 * df$z_conf_champ
+df[, c("player", "team_score")]
+
+#Standardize weighted total MVPs so they can be compared fairly to the other accolade variables
+df$z_mvps <- scale(df$total_mvps)
+
+#Standardize weighted total Finals MVPs so they are on the same scale as the other accolade variables
+df$z_finals_mvps <- scale(df$total_finals_mvps)
+
+#Standardize Defensive Player of the Year awards so they can be combined fairly with the other accolade variables
+df$z_dpoy <- scale(df$dpoy)
+
+#Standardize weighted total All-NBA selections so they can be combined fairly with the other accolade variables
+df$z_all_nba <- scale(df$total_all_nba)
+
+#Standardize weighted total All-Defense selections so they can be combined fairly with the other accolade variables
+df$z_all_def <- scale(df$total_all_def)
+
+#Standardize weighted total All-Star selections so they can be combined fairly with the other accolade variables
+df$z_all_star <- scale(df$total_all_star)
+df[, c("player", "z_mvps", "z_finals_mvps", "z_dpoy", "z_all_nba", "z_all_def", "z_all_star")]
+
+#Create the Individual Accolades Score by combining the standardized accolade variables using the chosen tier weights
+df$individual_score <- 0.30 * df$z_mvps +
+                       0.30 * df$z_finals_mvps +
+                       0.15 * df$z_dpoy +
+                       0.10 * df$z_all_nba +
+                       0.10 * df$z_all_def +
+                       0.05 * df$z_all_star
+df[, c("player", "individual_score")]
+```
+
+```{r standardizing-stats}
+#Standardize career points so they can be compared fairly with the other raw statistical variables
+df$z_points <- scale(df$career_points)
+
+#Standardize career rebounds so they can be compared fairly with the other raw statistical variables
+df$z_rebounds <- scale(df$career_rebounds)
+
+#Standardize career assists so they can be compared fairly with the other raw statistical variables
+df$z_assists <- scale(df$career_assists)
+
+#Standardize career steals so they can be compared fairly with the other raw statistical variables
+df$z_steals <- scale(df$career_steals)
+
+#Standardize career blocks so they can be compared fairly with the other raw statistical variables
+df$z_blocks <- scale(df$career_blocks)
+df[, c("player", "z_points", "z_rebounds", "z_assists", "z_steals", "z_blocks")]
+
+#Create the Statistics Score by combining the standardized raw statistical variables using the chosen weights
+df$stats_score <- 0.40 * df$z_points +
+                  0.20 * df$z_rebounds +
+                  0.20 * df$z_assists +
+                  0.10 * df$z_steals +
+                  0.10 * df$z_blocks
+df[, c("player", "stats_score")]
+```
+
+```{r standardizing-advstats}
+#Standardize PER so it can be fairly compared with Win Shares
+df$z_per <- scale(df$per)
+
+#Standardize Win Shares so it can be fairly compared with PER
+df$z_win_shares <- scale(df$win_shares)
+df[, c("player", "z_per", "z_win_shares")]
+
+#Create the Advanced Stats Score by equally weighting PER and Win Shares
+df$advanced_score <- 0.50 * df$z_per +
+                     0.50 * df$z_win_shares
+df[, c("player", "advanced_score")]
+```
+
+```{r standardizing-longevity}
+#Standardize seasons played so it can be compared fairly with the other category scores
+df$z_seasons <- scale(df$seasons)
+
+#Longevity score is just the standardized seasons played
+df$longevity_score <- df$z_seasons
+df[, c("player", "seasons", "longevity_score")]
+```
+
+```{r stress-test}
+
+#Create final GOAT score
+df$goat_score <- 
+  0.30 * df$team_score +
+  0.35 * df$individual_score +
+  0.15 * df$stats_score +
+  0.15 * df$advanced_score +
+  0.05 * df$longevity_score
+
+#View results
+df[, c("player", "goat_score")]
+
+#Sort from highest to lowest
+df[order(-df$goat_score), c("player", "goat_score")]
+```
