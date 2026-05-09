@@ -1,0 +1,12 @@
+name: nba-goat-calculator
+title: nba-goat-calculator
+username: donovanrdean
+account: donovanrdean
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17326529
+bundleId: 11969851
+url: https://donovanrdean.shinyapps.io/nba-goat-calculator/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
