@@ -1,2 +1,2 @@
-# stat8796-hw8
-Homework 8 = GitHub with RStudio
+# stat8796-course
+DS2 = GitHub with RStudio
