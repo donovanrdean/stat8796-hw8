@@ -1,2 +1,2 @@
 # stat8796-course
-DS2 = GitHub with RStudio
+DS2-projects = GitHub with RStudio
